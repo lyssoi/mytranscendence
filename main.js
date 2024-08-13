@@ -2,28 +2,68 @@ import Login from "./Login.js";
 import Home from "./Home.js";
 import UserInfo from "./UserInfo.js"
 import Pingpong from "./Pingpong.js"
-import run from "./game/run.js";
 
 const $app = document.querySelector(".App");
 
 const routes = {
     "/" : Home,
     "/login" : Login,
-    "/user" : UserInfo, // 유저정보를 아이디로 받아와서, 정보를 넣어주어야함.
-    "/pingpong" : Pingpong // 엔드포인트에 따라서 추가 라우팅을 해주어야함.
+    "/userinfo/:id" : UserInfo,
+    "/pingpong" : Pingpong //여기서 추가 url이 있다면..? 그 안에서 처리를 해야겠는데...?
 }
 
-$app.innerHTML = routes["/"].template();
+function parseUrl(url) {
+    const routeNames = Object.keys(routes);
+    for (let route of routeNames) {
+        const match = matchRoute(route, url);
+        if (match) {
+            return { route, params: match };
+        }
+    }
+    return null;
+}
+
+function matchRoute(route, url) {
+    const routeParts = route.split('/').filter(Boolean);
+    const urlParts = url.split('/').filter(Boolean);
+
+    if (routeParts.length !== urlParts.length) {
+        return null;
+    }
+
+    const params = {};
+
+    for (let i = 0; i < routeParts.length; i++) {
+        if (routeParts[i].startsWith(':')) {
+            const paramName = routeParts[i].slice(1);
+            params[paramName] = urlParts[i];
+        } else if (routeParts[i] !== urlParts[i]) {
+            return null;
+        }
+    }
+
+    return params;
+}
 
 
 function changeUrl(url) {
     history.pushState(null, null, url);
-    $app.innerHTML = routes[url].template();
+    renderPage();
 };
 
+/*[page rendering]*/
 function renderPage() {
     const path = window.location.pathname;
-    $app.innerHTML = routes[path] ? routes[path].template() : "404 - Page Not Found";
+    const parsed = parseUrl(path);
+
+    if (parsed) {
+        console.log(parsed);
+        const {route , params} = parsed;
+        $app.innerHTML = routes[route] ? routes[route].template() : "404 - Page Not Found";
+        if (routes[route].run !== undefined) {
+            routes[route].run();
+        }
+    }
 }
 
 // 초기 로드 시 페이지 렌더링
@@ -33,14 +73,13 @@ document.addEventListener("DOMContentLoaded", renderPage);
 window.addEventListener("popstate", renderPage);
 
 window.addEventListener("click", (e) => {
-    //혹은 각 코드안에서 해도되고, 클릭하는 애들만 모아놓은 코드를 작성해도 됨.
+    // onclick 메서드라고 할 수 있음.@
     if (e.target.classList.contains("clickLoginBtn")) {
         changeUrl("/login"); // -> 로그인하고, 다시 리다이렉트. 로그인했을때와 안했을때의 홈 화면이 달라야함.
     } else if (e.target.classList.contains("clickMyPage")){
-        changeUrl("/user:id");
+        changeUrl("/userinfo/1213");
     } else if (e.target.classList.contains("clickPingPong")){
         changeUrl("/pingpong");
-        run();
     }
 })
 
